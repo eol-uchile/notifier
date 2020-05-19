@@ -1,0 +1,29 @@
+name: Docker Image CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@master
+      - name: Pull submodules
+        run: git submodule update --init --recursive
+
+      - name: Build Docker image
+        run: |
+            docker build . --target scheduler --file .github/Dockerfile --tag eoluchile/eol-notifier:scheduler-${GITHUB_SHA} --tag eoluchile/eol-notifier:scheduler
+            docker build . --target worker --file .github/Dockerfile --tag eoluchile/eol-notifier:worker-${GITHUB_SHA} --tag eoluchile/eol-notifier:worker
+
+      - name: Push
+        run: |
+          echo "${DOCKERHUB_PASSWORD}" | docker login --username ${DOCKERHUB_USER} --password-stdin
+          docker push eoluchile/eol-notifier:scheduler-${GITHUB_SHA}
+          docker push eoluchile/eol-notifier:scheduler
+
+          docker push eoluchile/eol-notifier:worker-${GITHUB_SHA}
+          docker push eoluchile/eol-notifier:worker
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
