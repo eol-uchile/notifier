@@ -26,3 +26,8 @@ class ForumDigestTask(models.Model):
         """
         last_keep_dt = datetime.utcnow() - timedelta(days=day_limit)
         cls.objects.filter(created__lt=last_keep_dt).delete()
+
+class MappOrg(models.Model):
+    organization = models.CharField(max_length=50, unique=True, db_index=True)
+    url_site = models.CharField(max_length=150)
+    url_logo = models.CharField(max_length=150)

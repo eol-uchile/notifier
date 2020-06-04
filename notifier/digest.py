@@ -133,7 +133,16 @@ def _get_course_url(course_id):
     ...        settings.LMS_URL_BASE, "URL_BASE")
     'URL_BASE/courses/MITx/6.002x/2012_Fall/'
     """
-    return '{}/courses/{}/'.format(settings.LMS_URL_BASE, course_id)
+    from notifier.models import MappOrg
+    course_key = CourseKey.from_string(course_id)
+    try:
+        mappOrg = MappOrg.objects.get(organization=course_key.org)
+        site_url = mappOrg.url_site
+        
+    except MappOrg.DoesNotExist:
+        site_url = settings.LMS_URL_BASE
+
+    return '{}/courses/{}/'.format(site_url, course_id)
 
 
 def _get_thread_url(course_id, thread_id, commentable_id):
@@ -147,7 +156,7 @@ def _get_thread_url(course_id, thread_id, commentable_id):
     return _get_course_url(course_id) + thread_path
 
 
-def _get_unsubscribe_url(user):
+def _get_unsubscribe_url(user, url_site):
     """
     Formatting helper.
 
@@ -155,7 +164,7 @@ def _get_unsubscribe_url(user):
     using the encrypted token contained in the user's preference.
     """
     token = user["preferences"][DIGEST_NOTIFICATION_PREFERENCE_KEY]
-    return '{}/notification_prefs/unsubscribe/{}/'.format(settings.LMS_URL_BASE, token)
+    return '{}/notification_prefs/unsubscribe/{}/'.format(url_site, token)
 
 
 @contextmanager
@@ -226,6 +235,17 @@ def render_digest(user, digest, title, description):
     Returns two strings: (text_body, html_body).
     """
     logger.info("rendering email message: {user_id: %s}", user['id'])
+    from notifier.models import MappOrg
+    list_org = [CourseKey.from_string(course.course_id) for course in digest.courses]
+    list_org = [x.org for x in list_org]
+    try:
+        aux = MappOrg.objects.get(organization=list_org[0])
+        logo_url = aux.url_logo
+        url_site = aux.url_site
+    except MappOrg.DoesNotExist:
+        logo_url = settings.LOGO_IMAGE_URL
+        url_site = settings.LMS_URL_BASE
+
     context = Context({
         'user': user,
         'digest': digest,
@@ -234,8 +254,8 @@ def render_digest(user, digest, title, description):
         'course_count': len(digest.courses),
         'course_names': _make_text_list([course.title for course in digest.courses]),
         'thread_count': sum(course.thread_count for course in digest.courses),
-        'logo_image_url': settings.LOGO_IMAGE_URL,
-        'unsubscribe_url': _get_unsubscribe_url(user),
+        'logo_image_url': logo_url,
+        'unsubscribe_url': _get_unsubscribe_url(user, url_site),
         'postal_address': settings.EMAIL_SENDER_POSTAL_ADDRESS,
         })
 

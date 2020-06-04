@@ -76,8 +76,27 @@ class RenderDigestTestCase(TestCase):
                 )]
             )
         ])
+    def set_digest_other_org(self, thread_title):
+        self.digest_org = Digest([
+            DigestCourse(
+                "new_org/test_num/test_course",
+                [DigestThread(
+                    "0",
+                    "new_org/test_num/test_course",
+                    TEST_COMMENTABLE,
+                    thread_title,
+                    [DigestItem("test content", None, None)]
+                )]
+            )
+        ])
 
     def setUp(self):
+        from notifier.models import MappOrg
+        mapp_org = MappOrg.objects.create(
+                        organization="new_org",
+                        url_site="http://test.test.tst",
+                        url_logo="http://test.test.tst/image/test1.png"
+                    )
         self.user = {
             "id": "0",
             "preferences": {
@@ -85,6 +104,7 @@ class RenderDigestTestCase(TestCase):
             }
         }
         self.set_digest("test title")
+        self.set_digest_other_org("test title")
 
     def _test_unicode_data(self, input_text, expected_text, expected_html=None):
         self.set_digest(input_text)
@@ -145,3 +165,23 @@ class RenderDigestTestCase(TestCase):
         )
         self.assertIn(expected_url, text)
         self.assertIn(expected_url, html)
+    
+    @patch("notifier.digest.activate")
+    def test_render_digest_new_org(self, mock_activate):
+        logo = 'http://test.test.tst/image/test1.png'
+        unsubscribe = "http://test.test.tst/notification_prefs/unsubscribe/"
+        url_thread = 'http://test.test.tst/courses/new_org/test_num/test_course/discussion/forum/test_commentable/threads/0'
+        text, html = render_digest(self.user, self.digest_org, "dummy", "dummy")
+        self.assertIn(logo, html)
+        self.assertIn(url_thread, html)
+        self.assertIn(unsubscribe, html)
+    
+    @patch("notifier.digest.activate")
+    def test_render_digest_no_mapping_org(self, mock_activate):
+        logo = 'https://staging.eol.espinoza.dev/static/eol-uchile/images/email/logo.png'
+        unsubscribe = "http://luis.msalinas.cl/notification_prefs/unsubscribe/"
+        url_thread = 'http://luis.msalinas.cl/courses/test_org/test_num/test_course/discussion/forum/test_commentable/threads/0'
+        text, html = render_digest(self.user, self.digest, "dummy", "dummy")
+        self.assertIn(logo, html)
+        self.assertIn(url_thread, html)
+        self.assertIn(unsubscribe, html)
