@@ -178,10 +178,14 @@ class RenderDigestTestCase(TestCase):
     
     @patch("notifier.digest.activate")
     def test_render_digest_no_mapping_org(self, mock_activate):
-        logo = 'https://staging.eol.espinoza.dev/static/eol-uchile/images/email/logo.png'
-        unsubscribe = "http://luis.msalinas.cl/notification_prefs/unsubscribe/"
-        url_thread = 'http://luis.msalinas.cl/courses/test_org/test_num/test_course/discussion/forum/test_commentable/threads/0'
+        expected_url = "{lms_url_base}/notification_prefs/unsubscribe/{token}/".format(
+            lms_url_base=settings.LMS_URL_BASE,
+            token=self.user["preferences"][DIGEST_NOTIFICATION_PREFERENCE_KEY]
+        )
+        logo = settings.LOGO_IMAGE_URL
+        url_thread = '{lms_url_base}/courses/test_org/test_num/test_course/discussion/forum/test_commentable/threads/0'.format(
+            lms_url_base=settings.LMS_URL_BASE)
         text, html = render_digest(self.user, self.digest, "dummy", "dummy")
         self.assertIn(logo, html)
         self.assertIn(url_thread, html)
-        self.assertIn(unsubscribe, html)
+        self.assertIn(expected_url, html)
